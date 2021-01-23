@@ -43,7 +43,7 @@
 (defvar *scalaunit-output-buf-name* "scalaunit output")
 
 (defun scalaunit--find-test-class ()
-  "Generates the package for the test run. This is usually the full designated class."
+  "Generate the package for the test run. This is usually the full designated class."
   (let* ((buffer-text (buffer-substring-no-properties 1 (point-max)))
          (package-string (progn
                            (string-match "^package[ ]+\\(.+\\).*$"
@@ -72,11 +72,11 @@
       call-result)))
 
 (defun scalaunit--handle-successful-test-result ()
-  "Do some stuff when the tests ran OK."
+  "Do some stuff when the test ran OK."
   (message "%s" (propertize "Tests OK" 'face '(:foreground "green"))))
 
 (defun scalaunit--handle-unsuccessful-test-result ()
-  "Do some stuff when the tests ran NOK."
+  "Do some stuff when the test ran NOK."
   (message "%s" (propertize "Tests failed!" 'face '(:foreground "red"))))
 
 (defun scalaunit--after-save-action ()
@@ -109,8 +109,8 @@
   (setq bloop-project (completing-read "[scalaunit] Bloop project: "
                                        '())))
 
-(defun scalaunit-execute ()
-  "Save buffers and execute command to run the tests."
+(defun scalaunit-run-in-context ()
+  "Save buffers and execute command to run the test."
   (interactive)
   (save-buffer)
   (save-some-buffers)
@@ -120,7 +120,7 @@
   "Scala unit - test runner. Runs a command that runs tests."
   :lighter " ScalaUnit"
   :keymap (let ((map (make-sparse-keymap)))
-            (define-key map (kbd "C-c t") 'scalaunit-execute)
+            (define-key map (kbd "C-c t") 'scalaunit-run-in-context)
             map))
 
 (provide 'scalaunit)
