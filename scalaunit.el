@@ -42,7 +42,7 @@
 
 (defvar *scalaunit-output-buf-name* "scalaunit output")
 
-(defun scalaunit--generate-testpackage ()
+(defun scalaunit--find-test-class ()
   "Generates the package for the test run. This is usually the full designated class."
   (let* ((buffer-text (buffer-substring-no-properties 1 (point-max)))
          (package-string (progn
@@ -58,9 +58,9 @@
     (format "%s.%s" package-string clazz-string)
     ))
 
-(defun scalaunit--execute-test ()
-  "Call bloop test."
-  (let* ((test-cmd-args (list "bloop" "test" bloop-project "--only" (scalaunit--generate-testpackage)))
+(defun scalaunit--execute-test-in-context ()
+  "Call specific test."
+  (let* ((test-cmd-args (list "bloop" "test" bloop-project "--only" (scalaunit--find-test-class)))
          (call-args
           (append (list (car test-cmd-args) nil *scalaunit-output-buf-name* t)
                   (cdr test-cmd-args))))
@@ -92,11 +92,11 @@
   
   (let ((test-result (cond
                       ((string-equal "scala-mode" major-mode)
-                       (scalaunit--execute-test))
+                       (scalaunit--execute-test-in-context))
                       (t (progn (message "Unknown mode!")
                                 nil)))))
 
-    (unless (eq test-result nil)
+    (when test-result
       (if (= test-result 0)
           (scalaunit--handle-successful-test-result)
         (scalaunit--handle-unsuccessful-test-result))
