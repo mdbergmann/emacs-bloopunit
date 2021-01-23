@@ -20,7 +20,7 @@ To configure a custom key binding do this:
 (use-package scalaunit
   :load-path "~/.emacs.d/plugins/scalaunit"
   :bind (:map scalaunit-mode-map
-              ("C-c C-t" . scalaunit-execute))
+              ("C-c C-t" . scalaunit-run))
   :commands
   (scalaunit-mode))
 ```
