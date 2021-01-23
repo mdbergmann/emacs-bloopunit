@@ -117,7 +117,7 @@
   (scalaunit--after-save-action))
 
 (define-minor-mode scalaunit-mode
-  "Lfe - test runner. Runs a command that runs tests."
+  "Scala unit - test runner. Runs a command that runs tests."
   :lighter " ScalaUnit"
   :keymap (let ((map (make-sparse-keymap)))
             (define-key map (kbd "C-c t") 'scalaunit-execute)
