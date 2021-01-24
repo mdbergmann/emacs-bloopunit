@@ -30,6 +30,7 @@
 ;;; Code:
 
 (require 'ansi-color)
+(require 'cl-lib)
 
 (make-variable-buffer-local
  (defvar scalaunit-mode))
@@ -42,15 +43,20 @@
 
 (defvar *scalaunit-output-buf-name* "*scalaunit output*")
 
-(defun scalaunit--find-test-class ()
-  "Generate the package for the test run. This is usually the full designated class."
-  (let* ((buffer-text (buffer-substring-no-properties 1 (point-max)))
-         (package-string (progn
+(cl-defun scalaunit--get-buffer-text (&optional (beg 1) (end (point-max)))
+  "Retrieve the buffer text. Specify BEG and END for specific range."
+  (buffer-substring-no-properties beg end))
+
+(defun scalaunit--find-test-class (buffer-text)
+  "Generate the package for the test run.
+This is usually the full designated class.
+BUFFER-TEXT is a string where the matching should take place."
+  (let* ((package-string (progn
                            (string-match "^package[ ]+\\(.+\\).*$"
                                          buffer-text)
                            (match-string 1 buffer-text)))
          (clazz-string (progn
-                         (string-match "^class[ ]+\\(\\w+\\)[ ]+extends"
+                         (string-match "^class[ ]+\\(\\w+\\).*$"
                                        buffer-text)
                          (match-string 1 buffer-text))))
     (message "Package: %s" package-string)
@@ -64,7 +70,9 @@
 
 (defun scalaunit--execute-test-in-context ()
   "Call specific test."
-  (let* ((test-cmd-args (list "bloop" "test" bloop-project "--only" (scalaunit--find-test-class)))
+  (let* ((test-cmd-args (list "bloop" "test" bloop-project
+                              "--only" (scalaunit--find-test-class
+                                        (scalaunit--get-buffer-text))))
          (call-args
           (append (list (car test-cmd-args) nil *scalaunit-output-buf-name* t)
                   (cdr test-cmd-args))))
@@ -134,4 +142,26 @@
             map))
 
 (provide 'scalaunit)
+
+;; ---------------------------------------------
+;; tests
+;; ---------------------------------------------
+
+(defvar scalaunit--run-tests nil)
+
+(eval-when-compile
+  (setq scalaunit--run-tests t))
+
+(defun scalaunit--test--find-test-class ()
+  "Test finding the class context."
+  (let ((buffer-text "package foo.bar
+class FooBar {
+}"))
+    (assert (string= "foo.bar.FooBar"
+                     (scalaunit--find-test-class buffer-text)))))
+
+(when scalaunit--run-tests
+  (scalaunit--test--find-test-class)
+  )
+
 ;;; scalaunit.el ends here
