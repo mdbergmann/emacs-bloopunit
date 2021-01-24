@@ -119,7 +119,7 @@
   (save-some-buffers)
   (scalaunit--run-test))
 
-(defun scalaunit-set-project ()
+(defun scalaunit-select-project ()
   "Prompts for the Bloop project."
   (interactive)
 
