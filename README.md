@@ -32,6 +32,6 @@ On other major modes it just saves the buffer.
 
 The key sequence: `C-c t` (or a custom defined one) will first save the buffer and then run the tests using `bloop`.
 
-After the first execution of `scalaunit-run` you can view the "\*ScalaUnit output\*" buffer for test output.
+After the first execution of `scalaunit-run` you can view the "\*ScalaUnit output\*" buffer for test output. It should be mentioned that this is a synchronous process in order to collect the tools return code and show a `Tests OK` or `Tests failed!` as message. So the test class should be the largest context to run this is, otherwise it will just take to long to block up Emacs.
 
 Since Bloop commands require a project there is `scalaunit-select-project` function which reads from `bloop projects` and presents a project selection to choose from.
