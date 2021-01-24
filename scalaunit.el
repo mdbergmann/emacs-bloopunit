@@ -3,7 +3,7 @@
 ;; Copyright (C) 2021 Manfred Bergmann.
 
 ;; Author: Manfred Bergmann <manfred.bergmann@me.com>
-;; URL: http://github.com/mdbergmann/scalaunit
+;; URL: http://github.com/mdbergmann/emacs-scalaunit
 ;; Version: 0.1
 ;; Keywords: processes scala bloop test
 ;; Package-Requires: ((emacs "24.3"))
@@ -40,7 +40,7 @@
 (make-variable-buffer-local
  (defvar test-kind 'scalatest))
 
-(defvar *scalaunit-output-buf-name* "scalaunit output")
+(defvar *scalaunit-output-buf-name* "*scalaunit output*")
 
 (defun scalaunit--find-test-class ()
   "Generate the package for the test run. This is usually the full designated class."
