@@ -83,10 +83,18 @@
   "Do some stuff when the test ran NOK."
   (message "%s" (propertize "Tests failed!" 'face '(:foreground "red"))))
 
+(defun scalaunit--retrieve-projects ()
+  "Retrieve the available bloop projects."
+  (let ((default-directory (scalaunit--project-root-dir)))
+    (message "%s" (shell-command-to-string "bloop projects"))))
+
 (defun scalaunit--run-test ()
   "Execute the test."
   (message "scalaunit: run-test")
 
+  (unless bloop-project
+    (message "Please set a bloop project first!"))
+  
   (unless (string-equal "scala-mode" major-mode)
     (message "Need 'scala-mode' to run!")
     (return-from 'scalaunit--run-test))
@@ -114,8 +122,9 @@
 (defun scalaunit-set-project ()
   "Prompts for the Bloop project."
   (interactive)
+
   (setq bloop-project (completing-read "[scalaunit] Bloop project: "
-                                       '())))
+                                       (split-string (scalaunit--retrieve-projects)))))
 
 (define-minor-mode scalaunit-mode
   "Scala unit - test runner. Runs a command that runs tests."
