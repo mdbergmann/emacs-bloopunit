@@ -35,11 +35,8 @@
 (make-variable-buffer-local
  (defvar scalaunit-mode))
 
-(make-variable-buffer-local
- (defvar bloop-project nil))
-
-(make-variable-buffer-local
- (defvar test-kind 'scalatest))
+(defvar-local *bloop-project* nil)
+(defvar-local *test-kind* 'scalatest)
 
 (defvar *scalaunit-output-buf-name* "*scalaunit output*")
 
@@ -70,7 +67,7 @@ BUFFER-TEXT is a string where the matching should take place."
 
 (defun scalaunit--execute-test-in-context ()
   "Call specific test."
-  (let* ((test-cmd-args (list "bloop" "test" bloop-project
+  (let* ((test-cmd-args (list "bloop" "test" *bloop-project*
                               "--only" (scalaunit--find-test-class
                                         (scalaunit--get-buffer-text))))
          (call-args
@@ -100,18 +97,17 @@ BUFFER-TEXT is a string where the matching should take place."
   "Execute the test."
   (message "scalaunit: run-test")
 
-  (unless bloop-project
-    (message "Please set a bloop project first!"))
+  (unless *bloop-project*
+    (error "Please set a bloop project first!"))
   
   (unless (string-equal "scala-mode" major-mode)
-    (message "Need 'scala-mode' to run!")
-    (return-from 'scalaunit--run-test))
+    (error "Need 'scala-mode' to run!"))
   
   (get-buffer-create *scalaunit-output-buf-name*)
 
   (with-current-buffer *scalaunit-output-buf-name*
     (erase-buffer))
-
+  
   (let ((test-result (scalaunit--execute-test-in-context)))
     (when test-result
       (if (= test-result 0)
@@ -119,7 +115,7 @@ BUFFER-TEXT is a string where the matching should take place."
         (scalaunit--handle-unsuccessful-test-result))
       (with-current-buffer *scalaunit-output-buf-name*
         (ansi-color-apply-on-region (point-min) (point-max))))))
-      
+
 (defun scalaunit-run ()
   "Save buffers and execute command to run the test."
   (interactive)
@@ -131,8 +127,9 @@ BUFFER-TEXT is a string where the matching should take place."
   "Prompts for the Bloop project."
   (interactive)
 
-  (setq bloop-project (completing-read "[scalaunit] Bloop project: "
-                                       (split-string (scalaunit--retrieve-projects)))))
+  (setq-local *bloop-project* (completing-read "[scalaunit] Bloop project: "
+                                               (split-string (scalaunit--retrieve-projects))))
+  (message "Selected project: %s" *bloop-project*))
 
 (define-minor-mode scalaunit-mode
   "Scala unit - test runner. Runs a command that runs tests."
