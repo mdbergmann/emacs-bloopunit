@@ -141,7 +141,7 @@ BUFFER-TEXT is a string where the matching should take place."
 (provide 'scalaunit)
 
 ;; ---------------------------------------------
-;; tests
+;; tests ;; more tests
 ;; ---------------------------------------------
 
 (defvar scalaunit--run-tests nil)
