@@ -9,17 +9,8 @@ To install it clone this to some local folder and initialize like this in Emacs:
 
 ```
 (use-package scalaunit
-  :load-path "~/.emacs.d/plugins/emacs-scalaunit")
-```
-
-The default key binding is `C-c C-<*>`.
-
-To configure a custom key binding do this:
-
-```
-(use-package scalaunit
   :load-path "~/.emacs.d/plugins/scalaunit"
-  ;; below are the default key bindings
+  ;; those are default bindings. :bind is only necessary if you want to change them. 
   :bind (:map scalaunit-mode-map
               ("C-c C-t" . scalaunit-run-all)
               ("C-c C-s" . scalaunit-run-single)
@@ -28,6 +19,8 @@ To configure a custom key binding do this:
   :commands
   (scalaunit-mode))
 ```
+
+The default key binding is `C-c C-<*>`.
 
 When done you have a minor mode called `scalaunit-mode`.
 
