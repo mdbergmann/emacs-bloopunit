@@ -8,11 +8,11 @@ There is no package on Elpa or Melpa.
 To install it clone this to some local folder and initialize like this in Emacs:
 
 ```
-(use-package ocamlunit
+(use-package scalaunit
   :load-path "~/.emacs.d/plugins/emacs-scalaunit")
 ```
 
-The default key binding is `C-c C-t`.
+The default key binding is `C-c C-<*>`.
 
 To configure a custom key binding do this:
 
@@ -24,7 +24,7 @@ To configure a custom key binding do this:
               ("C-c C-t" . scalaunit-run-all)
               ("C-c C-s" . scalaunit-run-single)
               ("C-c C-r" . scalaunit-run-last)
-              ("C-c C-p" . scalaunit-select-project))  ;; optionally bind to key
+              ("C-c C-p" . scalaunit-select-project))
   :commands
   (scalaunit-mode))
 ```
