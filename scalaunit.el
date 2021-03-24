@@ -4,7 +4,7 @@
 
 ;; Author: Manfred Bergmann <manfred.bergmann@me.com>
 ;; URL: http://github.com/mdbergmann/emacs-scalaunit
-;; Version: 0.1
+;; Version: 0.2
 ;; Keywords: processes scala bloop test
 ;; Package-Requires: ((emacs "24.3"))
 
@@ -63,14 +63,32 @@ BUFFER-TEXT is a string where the matching should take place."
     (format "%s.%s" package-string clazz-string)
     ))
 
+(defun scalaunit--find-test-method (buffer-text curr-position)
+  "Find a single test case for the test run.
+BUFFER-TEXT is a string where the matching should take place.
+CURR-POSITION is the current position of the curser in the buffer."
+  (with-temp-buffer
+    (insert buffer-text)
+    (goto-char curr-position)
+    (let ((found-point (search-backward "test(" nil t)))
+      (message "point: %s" found-point)
+      (if found-point
+          (let ((matches (string-match "test(\"\\(.*\\)\").*"
+                                       buffer-text
+                                       (- found-point 1))))
+            (message "matches: %s" matches)
+            (match-string 1 buffer-text))))))
+
 (defun scalaunit--project-root-dir ()
   "Return the project root directory."
   (locate-dominating-file default-directory ".bloop"))
 
-(defun scalaunit--execute-test-in-context (test)
-  "Call specific test. TEST specifies a test to run."
-  (let* ((test-cmd-args (list "bloop" "test" *bloop-project*
-                              "--only" test))
+(defun scalaunit--execute-test-in-context (test-args)
+  "Call specific test. TEST-ARGS specifies a test to run."
+  (message "Run with test args: %s" test-args)
+  (let* ((test-cmd-args (append
+                         (list "bloop" "test" *bloop-project* "--only")
+                         test-args))
          (call-args
           (append (list (car test-cmd-args) nil *scalaunit-output-buf-name* t)
                   (cdr test-cmd-args))))
@@ -94,8 +112,31 @@ BUFFER-TEXT is a string where the matching should take place."
   (let ((default-directory (scalaunit--project-root-dir)))
     (message "%s" (shell-command-to-string "bloop projects"))))
 
-(cl-defun scalaunit--run-test (&optional (test-spec nil))
-  "Execute the test. Specify optional TEST-SPEC if a specific test should be run."
+(defun scalaunit--get-test-args (test-spec single)
+  "Calculates test-args as used in exeute-in-context.
+TEST-SPEC is a given, previously executed test.
+When this is not null, it'll be used.
+Otherwise we calculate a new test-spec, from class
+and (maybe) single test case if SINGLE is T."
+  (if (not (null test-spec))
+      test-spec
+    (let* ((test-class (scalaunit--find-test-class
+                        (scalaunit--get-buffer-text)))
+           (single-test (if single
+                            (scalaunit--find-test-method
+                             (scalaunit--get-buffer-text)
+                             (point))
+                          nil))
+           (test-args (list test-class)))
+      (if single-test
+          (append test-args
+                  (list "--" "-z" single-test))
+        test-args))))
+
+(cl-defun scalaunit--run-test (&optional (test-spec nil) (single nil))
+  "Execute the test.
+Specify optional TEST-SPEC if a specific test should be run.
+Specify optional SINGLE (T)) to try to run only a single test case."
   (message "scalaunit: run-test")
 
   (unless *bloop-project*
@@ -109,12 +150,9 @@ BUFFER-TEXT is a string where the matching should take place."
   (with-current-buffer *scalaunit-output-buf-name*
     (erase-buffer))
   
-  (let* ((test-to-run (if test-spec
-                          test-spec
-                        (scalaunit--find-test-class
-                         (scalaunit--get-buffer-text))))
-         (test-result (scalaunit--execute-test-in-context test-to-run)))
-    (setq-local *last-test* test-to-run)
+  (let* ((test-args (scalaunit--get-test-args test-spec single))
+         (test-result (scalaunit--execute-test-in-context test-args)))
+    (setq-local *last-test* test-args)
     (when test-result
       (if (= test-result 0)
           (scalaunit--handle-successful-test-result)
@@ -122,11 +160,17 @@ BUFFER-TEXT is a string where the matching should take place."
       (with-current-buffer *scalaunit-output-buf-name*
         (ansi-color-apply-on-region (point-min) (point-max))))))
 
-(defun scalaunit-run ()
-  "Save buffers and execute command to run the test."
+(defun scalaunit-run-all ()
+  "Save buffers and execute all test cases in the context."
   (interactive)
   (scalaunit--run-preps)
   (scalaunit--run-test))
+
+(defun scalaunit-run-single ()
+  "Save buffers and execute a single test in the context."
+  (interactive)
+  (scalaunit--run-preps)
+  (scalaunit--run-test nil t))
 
 (defun scalaunit-run-last ()
   "Save buffers and execute command to run the test."
@@ -151,7 +195,8 @@ BUFFER-TEXT is a string where the matching should take place."
   "Scala unit - test runner. Runs a command that runs tests."
   :lighter " ScalaUnit"
   :keymap (let ((map (make-sparse-keymap)))
-            (define-key map (kbd "C-c C-t") 'scalaunit-run)
+            (define-key map (kbd "C-c C-t") 'scalaunit-run-all)
+            (define-key map (kbd "C-c C-s") 'scalaunit-run-single)
             (define-key map (kbd "C-c C-r") 'scalaunit-run-last)
             (define-key map (kbd "C-c C-p") 'scalaunit-select-project)
             map))
@@ -175,8 +220,18 @@ class FooBar {
     (assert (string= "foo.bar.FooBar"
                      (scalaunit--find-test-class buffer-text)))))
 
+(defun scalaunit--test--find-test-method ()
+  "Test finding the test-case context."
+  (let ((buffer-text "some stuff
+  test(\"foo bar test\") {
+in test
+}"))
+    (assert (string= "foo bar test"
+                     (scalaunit--find-test-method buffer-text 41)))))
+
 (when scalaunit--run-tests
   (scalaunit--test--find-test-class)
+  (scalaunit--test--find-test-method)
   )
 
 ;;; scalaunit.el ends here
