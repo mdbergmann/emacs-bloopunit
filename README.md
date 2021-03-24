@@ -19,6 +19,7 @@ To configure a custom key binding do this:
 ```
 (use-package scalaunit
   :load-path "~/.emacs.d/plugins/scalaunit"
+  ;; below are the default key bindings
   :bind (:map scalaunit-mode-map
               ("C-c C-t" . scalaunit-run-all)
               ("C-c C-s" . scalaunit-run-single)
