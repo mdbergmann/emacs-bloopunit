@@ -38,6 +38,8 @@
 (defvar-local *bloop-project* nil)
 (defvar-local *test-kind* 'scalatest)
 
+(defvar-local *last-test* nil)
+
 (defvar *scalaunit-output-buf-name* "*scalaunit output*")
 
 (cl-defun scalaunit--get-buffer-text (&optional (beg 1) (end (point-max)))
@@ -65,11 +67,10 @@ BUFFER-TEXT is a string where the matching should take place."
   "Return the project root directory."
   (locate-dominating-file default-directory ".bloop"))
 
-(defun scalaunit--execute-test-in-context ()
-  "Call specific test."
+(defun scalaunit--execute-test-in-context (test)
+  "Call specific test. TEST specifies a test to run."
   (let* ((test-cmd-args (list "bloop" "test" *bloop-project*
-                              "--only" (scalaunit--find-test-class
-                                        (scalaunit--get-buffer-text))))
+                              "--only" test))
          (call-args
           (append (list (car test-cmd-args) nil *scalaunit-output-buf-name* t)
                   (cdr test-cmd-args))))
@@ -93,8 +94,8 @@ BUFFER-TEXT is a string where the matching should take place."
   (let ((default-directory (scalaunit--project-root-dir)))
     (message "%s" (shell-command-to-string "bloop projects"))))
 
-(defun scalaunit--run-test ()
-  "Execute the test."
+(cl-defun scalaunit--run-test (&optional (test-spec nil))
+  "Execute the test. Specify optional TEST-SPEC if a specific test should be run."
   (message "scalaunit: run-test")
 
   (unless *bloop-project*
@@ -108,7 +109,12 @@ BUFFER-TEXT is a string where the matching should take place."
   (with-current-buffer *scalaunit-output-buf-name*
     (erase-buffer))
   
-  (let ((test-result (scalaunit--execute-test-in-context)))
+  (let* ((test-to-run (if test-spec
+                          test-spec
+                        (scalaunit--find-test-class
+                         (scalaunit--get-buffer-text))))
+         (test-result (scalaunit--execute-test-in-context test-to-run)))
+    (setq-local *last-test* test-to-run)
     (when test-result
       (if (= test-result 0)
           (scalaunit--handle-successful-test-result)
@@ -119,9 +125,19 @@ BUFFER-TEXT is a string where the matching should take place."
 (defun scalaunit-run ()
   "Save buffers and execute command to run the test."
   (interactive)
-  (save-buffer)
-  (save-some-buffers)
+  (scalaunit--run-preps)
   (scalaunit--run-test))
+
+(defun scalaunit-run-last ()
+  "Save buffers and execute command to run the test."
+  (interactive)
+  (scalaunit--run-preps)
+  (scalaunit--run-test *last-test*))
+
+(defun scalaunit--run-preps ()
+  "Save buffers."
+  (save-buffer)
+  (save-some-buffers))
 
 (defun scalaunit-select-project ()
   "Prompts for the Bloop project."
@@ -135,7 +151,9 @@ BUFFER-TEXT is a string where the matching should take place."
   "Scala unit - test runner. Runs a command that runs tests."
   :lighter " ScalaUnit"
   :keymap (let ((map (make-sparse-keymap)))
-            (define-key map (kbd "C-c t") 'scalaunit-run)
+            (define-key map (kbd "C-c C-t") 'scalaunit-run)
+            (define-key map (kbd "C-c C-r") 'scalaunit-run-last)
+            (define-key map (kbd "C-c C-p") 'scalaunit-select-project)
             map))
 
 (provide 'scalaunit)
