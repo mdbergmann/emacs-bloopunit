@@ -4,7 +4,7 @@
 
 ;; Author: Manfred Bergmann <manfred.bergmann@me.com>
 ;; URL: http://github.com/mdbergmann/emacs-scalaunit
-;; Version: 0.2
+;; Version: 0.3
 ;; Keywords: processes scala bloop test
 ;; Package-Requires: ((emacs "24.3"))
 
@@ -57,10 +57,11 @@ BUFFER-TEXT is a string where the matching should take place."
     (format "%s.%s" package-string clazz-string)
     ))
 
-(defun scalaunit--find-test-method (buffer-text curr-position)
-  "Find a single test case for the test run.
+(defun scalaunit--find-test-method--funspec (buffer-text curr-position)
+  "Find a single test case for the test run in fun spec format.
 BUFFER-TEXT is a string where the matching should take place.
 CURR-POSITION is the current position of the curser in the buffer."
+  (message "Finding test case in fun spec format.")
   (with-temp-buffer
     (insert buffer-text)
     (goto-char curr-position)
@@ -68,6 +69,24 @@ CURR-POSITION is the current position of the curser in the buffer."
       (message "point: %s" found-point)
       (if found-point
           (let ((matches (string-match "test(\"\\(.*\\)\").*"
+                                       buffer-text
+                                       (- found-point 1))))
+            (message "matches: %s" matches)
+            (match-string 1 buffer-text))))))
+
+(defun scalaunit--find-test-method--wordspec (buffer-text curr-position)
+  "Find a single test case for the test run in word spec format.
+BUFFER-TEXT is a string where the matching should take place.
+CURR-POSITION is the current position of the curser in the buffer."
+  (message "Finding test case in word spec format.")
+  (with-temp-buffer
+    (insert buffer-text)
+    (goto-char curr-position)
+    (let ((found-point (re-search-backward "\".*\" +in +{" nil t)))
+      (message "point: %s" found-point)
+      (message "starting with: %s" (substring-no-properties buffer-text (- found-point 1)))
+      (if found-point
+          (let ((matches (string-match "\"\\(.*\\)\" +in"
                                        buffer-text
                                        (- found-point 1))))
             (message "matches: %s" matches)
@@ -111,7 +130,7 @@ CURRENT-POINT is the current cursor position. Only relevant if SINGLE is specifi
     (let* ((test-class (scalaunit--find-test-class
                         buffer-text))
            (single-test (if single
-                            (scalaunit--find-test-method
+                            (scalaunit--find-test-method--funspec
                              buffer-text
                              current-point)))
            (test-args (list test-class)))
@@ -223,14 +242,23 @@ class FooBar {
     (assert (string= "foo.bar.FooBar"
                      (scalaunit--find-test-class buffer-text)))))
 
-(defun scalaunit--test--find-test-method ()
-  "Test finding the test-case context."
+(defun scalaunit--test--find-test-method--funspec ()
+  "Test finding the test-case context - fun spec."
   (let ((buffer-text "some stuff
   test(\"foo bar test\") {
 in test
 }"))
     (assert (string= "foo bar test"
-                     (scalaunit--find-test-method buffer-text 41)))))
+                     (scalaunit--find-test-method--funspec buffer-text 41)))))
+
+(defun scalaunit--test--find-test-method--wordspec ()
+  "Test finding the test-case context - word spec."
+  (let ((buffer-text "some stuff
+  \"foo bar test\" in {
+in test
+}"))
+    (assert (string= "foo bar test"
+                     (scalaunit--find-test-method--wordspec buffer-text 34)))))
 
 (defun scalaunit--test--compute-test-args ()
   "Test computing test args."
@@ -253,7 +281,8 @@ in test
 
 (when scalaunit--run-tests
   (scalaunit--test--find-test-class)
-  (scalaunit--test--find-test-method)
+  (scalaunit--test--find-test-method--funspec)
+  (scalaunit--test--find-test-method--wordspec)
   (scalaunit--test--compute-test-args)
   )
 
