@@ -36,15 +36,9 @@
  (defvar scalaunit-mode))
 
 (defvar-local *bloop-project* nil)
-(defvar-local *test-kind* 'scalatest)
-
 (defvar-local *last-test* nil)
 
 (defvar *scalaunit-output-buf-name* "*scalaunit output*")
-
-(cl-defun scalaunit--get-buffer-text (&optional (beg 1) (end (point-max)))
-  "Retrieve the buffer text. Specify BEG and END for specific range."
-  (buffer-substring-no-properties beg end))
 
 (defun scalaunit--find-test-class (buffer-text)
   "Generate the package for the test run.
@@ -99,6 +93,36 @@ CURR-POSITION is the current position of the curser in the buffer."
       (message "test call result: %s" call-result)
       call-result)))
 
+(defun scalaunit--retrieve-projects ()
+  "Retrieve the available bloop projects."
+  (let ((default-directory (scalaunit--project-root-dir)))
+    (message "%s" (shell-command-to-string "bloop projects"))))
+
+(cl-defun scalaunit--compute-test-args (test-spec single buffer-text)
+  "Calculates test-args as used in execute-in-context.
+TEST-SPEC is a given, previously executed test.
+When this is not null, it'll be used.
+Otherwise we calculate a new test-spec, from class
+and (maybe) single test case if SINGLE is T.
+BUFFER-TEXT contains the buffer text as string without properties."
+  (if (not (null test-spec))
+      test-spec
+    (let* ((test-class (scalaunit--find-test-class
+                        buffer-text))
+           (single-test (if single
+                            (scalaunit--find-test-method
+                             buffer-text
+                             (point))))
+           (test-args (list test-class)))
+      (if (and single-test single)
+          (append test-args
+                  (list "--" "-t" single-test))
+        test-args))))
+
+(cl-defun scalaunit--get-buffer-text (&optional (beg 1) (end (point-max)))
+  "Retrieve the buffer text. Specify BEG and END for specific range."
+  (buffer-substring-no-properties beg end))
+
 (defun scalaunit--handle-successful-test-result ()
   "Do some stuff when the test ran OK."
   (message "%s" (propertize "Tests OK" 'face '(:foreground "green"))))
@@ -106,32 +130,6 @@ CURR-POSITION is the current position of the curser in the buffer."
 (defun scalaunit--handle-unsuccessful-test-result ()
   "Do some stuff when the test ran NOK."
   (message "%s" (propertize "Tests failed!" 'face '(:foreground "red"))))
-
-(defun scalaunit--retrieve-projects ()
-  "Retrieve the available bloop projects."
-  (let ((default-directory (scalaunit--project-root-dir)))
-    (message "%s" (shell-command-to-string "bloop projects"))))
-
-(defun scalaunit--get-test-args (test-spec single)
-  "Calculates test-args as used in exeute-in-context.
-TEST-SPEC is a given, previously executed test.
-When this is not null, it'll be used.
-Otherwise we calculate a new test-spec, from class
-and (maybe) single test case if SINGLE is T."
-  (if (not (null test-spec))
-      test-spec
-    (let* ((test-class (scalaunit--find-test-class
-                        (scalaunit--get-buffer-text)))
-           (single-test (if single
-                            (scalaunit--find-test-method
-                             (scalaunit--get-buffer-text)
-                             (point))
-                          nil))
-           (test-args (list test-class)))
-      (if single-test
-          (append test-args
-                  (list "--" "-z" single-test))
-        test-args))))
 
 (cl-defun scalaunit--run-test (&optional (test-spec nil) (single nil))
   "Execute the test.
@@ -150,7 +148,10 @@ Specify optional SINGLE (T)) to try to run only a single test case."
   (with-current-buffer *scalaunit-output-buf-name*
     (erase-buffer))
   
-  (let* ((test-args (scalaunit--get-test-args test-spec single))
+  (let* ((test-args (scalaunit--compute-test-args
+                     test-spec
+                     single
+                     (scalaunit--get-buffer-text)))
          (test-result (scalaunit--execute-test-in-context test-args)))
     (setq-local *last-test* test-args)
     (when test-result
@@ -229,9 +230,24 @@ in test
     (assert (string= "foo bar test"
                      (scalaunit--find-test-method buffer-text 41)))))
 
+(defun scalaunit--test--compute-test-args ()
+  "Test computing test args."
+  (let ((buffer-text ""))
+    ;; return given test spec
+    (assert (string= "my-given-test-spec"
+                     (scalaunit--compute-test-args "my-given-test-spec" nil buffer-text))))
+  (let ((buffer-text "package foo.bar\nclass FooBar\ntest(\"foo-test\")"))
+    ;; return full class test
+    (assert (equalp (list "foo.bar.FooBar")
+                    (scalaunit--compute-test-args nil nil buffer-text)))
+    (assert (equalp (list "foo.bar.FooBar" "--" "-t" "foo-test")
+                    (scalaunit--compute-test-args nil t buffer-text))))
+  )
+
 (when scalaunit--run-tests
   (scalaunit--test--find-test-class)
   (scalaunit--test--find-test-method)
+  (scalaunit--test--compute-test-args)
   )
 
 ;;; scalaunit.el ends here
