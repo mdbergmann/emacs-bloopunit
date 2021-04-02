@@ -98,13 +98,14 @@ CURR-POSITION is the current position of the curser in the buffer."
   (let ((default-directory (scalaunit--project-root-dir)))
     (message "%s" (shell-command-to-string "bloop projects"))))
 
-(cl-defun scalaunit--compute-test-args (test-spec single buffer-text)
+(defun scalaunit--compute-test-args (test-spec single buffer-text current-point)
   "Calculates test-args as used in execute-in-context.
 TEST-SPEC is a given, previously executed test.
 When this is not null, it'll be used.
 Otherwise we calculate a new test-spec, from class
 and (maybe) single test case if SINGLE is T.
-BUFFER-TEXT contains the buffer text as string without properties."
+BUFFER-TEXT contains the buffer text as string without properties.
+CURRENT-POINT is the current cursor position. Only relevant if SINGLE is specified."
   (if (not (null test-spec))
       test-spec
     (let* ((test-class (scalaunit--find-test-class
@@ -112,7 +113,7 @@ BUFFER-TEXT contains the buffer text as string without properties."
            (single-test (if single
                             (scalaunit--find-test-method
                              buffer-text
-                             (point))))
+                             current-point)))
            (test-args (list test-class)))
       (if (and single-test single)
           (append test-args
@@ -151,7 +152,8 @@ Specify optional SINGLE (T)) to try to run only a single test case."
   (let* ((test-args (scalaunit--compute-test-args
                      test-spec
                      single
-                     (scalaunit--get-buffer-text)))
+                     (scalaunit--get-buffer-text)
+                     (point)))
          (test-result (scalaunit--execute-test-in-context test-args)))
     (setq-local *last-test* test-args)
     (when test-result
@@ -235,13 +237,18 @@ in test
   (let ((buffer-text ""))
     ;; return given test spec
     (assert (string= "my-given-test-spec"
-                     (scalaunit--compute-test-args "my-given-test-spec" nil buffer-text))))
-  (let ((buffer-text "package foo.bar\nclass FooBar\ntest(\"foo-test\")"))
+                     (scalaunit--compute-test-args "my-given-test-spec" nil buffer-text 0))))
+  (let ((buffer-text "package foo.bar\nclass FooBar\ntest(\"foo-test\") { blah }"))
     ;; return full class test
     (assert (equalp (list "foo.bar.FooBar")
-                    (scalaunit--compute-test-args nil nil buffer-text)))
+                    (scalaunit--compute-test-args nil nil buffer-text 0)))
+    ;; cursor pos in 'test' block - returns single test
     (assert (equalp (list "foo.bar.FooBar" "--" "-t" "foo-test")
-                    (scalaunit--compute-test-args nil t buffer-text))))
+                    (scalaunit--compute-test-args nil t buffer-text 54)))
+    ;; cursor pos outside of 'test' block
+    (assert (equalp (list "foo.bar.FooBar")
+                    (scalaunit--compute-test-args nil t buffer-text 10)))
+    )
   )
 
 (when scalaunit--run-tests
