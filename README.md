@@ -2,7 +2,7 @@
 
 This is a Emacs minor mode to run tests in a Scala Bloop project.
 
-Tests are actually run with `bloop test`. The plugin tries to figure out the context of the test to run. Run `bloopunit-run-all` to run all tests in a class. Use `bloopunit-run-single` to run only a single test case. This requires the cursor to be with a `test("some test case")` block, otherwise the parsing might be off. A different ScalaTest spec is currenty not supported.
+Tests are actually run with `bloop test`. The plugin tries to figure out the context of the test to run. Run `bloopunit-run-all` to run all tests in a class. Use `bloopunit-run-single` to run only a single test case. This requires the cursor to be with a `test("some test case")` block, otherwise the parsing might be off. Support ScalaTest test specs are FunSpec and WordSpecLike.
 
 There is no package on Elpa or Melpa.
 To install it clone this to some local folder and initialize like this in Emacs:
