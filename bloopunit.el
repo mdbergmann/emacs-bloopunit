@@ -37,6 +37,7 @@
 
 (defvar-local *bloop-project* nil)
 (defvar-local *last-test* nil)
+(defvar-local *bloop-process* nil)
 
 (defvar *bloopunit-output-buf-name* "*bloopunit output*")
 
@@ -54,8 +55,7 @@ BUFFER-TEXT is a string where the matching should take place."
                          (match-string 1 buffer-text))))
     (message "Package: %s" package-string)
     (message "Class: %s" clazz-string)
-    (format "%s.%s" package-string clazz-string)
-    ))
+    (format "%s.%s" package-string clazz-string)))
 
 (defun bloopunit--find-test-method--funspec (buffer-text curr-position)
   "Find a single test case for the test run in fun spec format.
@@ -96,21 +96,47 @@ CURR-POSITION is the current position of the curser in the buffer."
   "Return the project root directory."
   (locate-dominating-file default-directory ".bloop"))
 
+(defun bloopunit--process-filter (proc string)
+  "Process filter function. Takes PROC as process.
+And STRING as the process output.
+The output as STRING is enriched with text sttributes from ansi escape commands."
+  (with-current-buffer (process-buffer proc)
+    (let ((moving (= (point) (process-mark proc))))
+      (save-excursion
+        (goto-char (process-mark proc))
+        (insert string)
+        (set-marker (process-mark proc) (point)))
+      (if moving (goto-char (process-mark proc))))))
+
+(defun bloopunit--process-sentinel (proc signal)
+  "Bloop process sentinel.
+PROC is the process. SIGNAL the signal from the process."
+  (ignore signal)
+  (when (string-equal (process-status proc) "exit")
+    (setq *bloop-process* nil)
+    (let ((process-rc (process-exit-status proc)))
+      (with-current-buffer (process-buffer proc)
+        (ansi-color-apply-on-region (point-min) (point-max)))
+      (if (= process-rc 0)
+          (bloopunit--handle-successful-test-result)
+        (bloopunit--handle-unsuccessful-test-result)))))
+
 (defun bloopunit--execute-test-in-context (test-args)
   "Call specific test. TEST-ARGS specifies a test to run."
   (message "Run with test args: %s" test-args)
-  (let* ((test-cmd-args (append
-                         (list "bloop" "test" *bloop-project* "--only")
-                         test-args))
-         (call-args
-          (append (list (car test-cmd-args) nil *bloopunit-output-buf-name* t)
-                  (cdr test-cmd-args))))
-    (message "calling: %s" call-args)
-    (let* ((default-directory (bloopunit--project-root-dir))
-           (call-result (apply 'call-process call-args)))
+  (let ((test-cmd-args (append
+                        (list "bloop" "test" *bloop-project* "--only")
+                        test-args)))
+    (message "calling: %s" test-cmd-args)
+    (let ((default-directory (bloopunit--project-root-dir)))
       (message "cwd: %s" default-directory)
-      (message "test call result: %s" call-result)
-      call-result)))
+      (setq *bloop-process*
+            (make-process :name "bloopunit"
+                          :buffer *bloopunit-output-buf-name*
+                          :command test-cmd-args
+                          :filter 'bloopunit--process-filter
+                          :sentinel 'bloopunit--process-sentinel))
+      (message "Running: %s" test-args))))
 
 (defun bloopunit--retrieve-projects ()
   "Retrieve the available bloop projects."
@@ -168,42 +194,42 @@ Specify optional SINGLE (T)) to try to run only a single test case."
   (with-current-buffer *bloopunit-output-buf-name*
     (erase-buffer))
   
-  (let* ((test-args (bloopunit--compute-test-args
-                     test-spec
-                     single
-                     (bloopunit--get-buffer-text)
-                     (point)))
-         (test-result (bloopunit--execute-test-in-context test-args)))
-    (setq-local *last-test* test-args)
-    (when test-result
-      (if (= test-result 0)
-          (bloopunit--handle-successful-test-result)
-        (bloopunit--handle-unsuccessful-test-result))
-      (with-current-buffer *bloopunit-output-buf-name*
-        (ansi-color-apply-on-region (point-min) (point-max))))))
+  (let ((test-args (bloopunit--compute-test-args
+                    test-spec
+                    single
+                    (bloopunit--get-buffer-text)
+                    (point))))
+    (bloopunit--execute-test-in-context test-args)
+    (setq-local *last-test* test-args)))
 
 (defun bloopunit-run-all ()
   "Save buffers and execute all test cases in the context."
   (interactive)
-  (bloopunit--run-preps)
-  (bloopunit--run-test))
+  (when (bloopunit--run-preps)
+    (bloopunit--run-test)))
 
 (defun bloopunit-run-single ()
   "Save buffers and execute a single test in the context."
   (interactive)
-  (bloopunit--run-preps)
-  (bloopunit--run-test nil t))
+  (when (bloopunit--run-preps)
+    (bloopunit--run-test nil t)))
 
 (defun bloopunit-run-last ()
   "Save buffers and execute command to run the test."
   (interactive)
-  (bloopunit--run-preps)
-  (bloopunit--run-test *last-test*))
+  (when (bloopunit--run-preps)
+    (bloopunit--run-test *last-test*)))
 
 (defun bloopunit--run-preps ()
   "Save buffers."
-  (save-buffer)
-  (save-some-buffers))
+  (if (null *bloop-process*)
+      (progn
+        (save-buffer)
+        (save-some-buffers)
+        t)
+    (progn
+      (message "Test still running. Try again when finished!")
+      nil)))
 
 (defun bloopunit-select-project ()
   "Prompts for the Bloop project."
