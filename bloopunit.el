@@ -112,14 +112,14 @@ The output as STRING is enriched with text sttributes from ansi escape commands.
   "Bloop process sentinel.
 PROC is the process. SIGNAL the signal from the process."
   (ignore signal)
-  (when (string-equal (process-status proc) "exit")
-    (setq *bloop-process* nil)
-    (let ((process-rc (process-exit-status proc)))
-      (with-current-buffer (process-buffer proc)
-        (ansi-color-apply-on-region (point-min) (point-max)))
-      (if (= process-rc 0)
-          (bloopunit--handle-successful-test-result)
-        (bloopunit--handle-unsuccessful-test-result)))))
+  (let ((process-rc (process-exit-status proc)))
+    (with-current-buffer (process-buffer proc)
+      (ansi-color-apply-on-region (point-min) (point-max)))
+    (if (= process-rc 0)
+        (bloopunit--handle-successful-test-result)
+      (bloopunit--handle-unsuccessful-test-result)))
+  (when (not (process-live-p proc))
+    (setq *bloop-process* nil)))
 
 (defun bloopunit--execute-test-in-context (test-args)
   "Call specific test. TEST-ARGS specifies a test to run."
