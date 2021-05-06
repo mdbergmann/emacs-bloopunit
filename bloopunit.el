@@ -222,7 +222,7 @@ Specify optional SINGLE (T)) to try to run only a single test case."
 
 (defun bloopunit--run-preps ()
   "Save buffers."
-  (if (null *bloop-process*)
+  (if (or (null *bloop-process*) (not (process-live-p *bloop-process*)))
       (progn
         (save-buffer)
         (save-some-buffers)
