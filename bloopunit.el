@@ -241,7 +241,7 @@ Specify optional SINGLE (T)) to try to run only a single test case."
 
 (define-minor-mode bloopunit-mode
   "Bloop unit - test runner. Runs Bloop to execute tests."
-  :lighter " BloopUnit"
+  :lighter " BU"
   :keymap (let ((map (make-sparse-keymap)))
             (define-key map (kbd "C-c C-t") 'bloopunit-run-all)
             (define-key map (kbd "C-c C-s") 'bloopunit-run-single)
