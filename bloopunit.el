@@ -39,6 +39,8 @@
 (defvar-local *last-test* nil)
 (defvar-local *bloop-process* nil)
 
+(defvar bloopunit-bloop-executable "bloop")
+
 (defvar *bloopunit-output-buf-name* "*bloopunit output*")
 
 (defun bloopunit--find-test-class (buffer-text)
@@ -125,7 +127,7 @@ PROC is the process. SIGNAL the signal from the process."
   "Call specific test. TEST-ARGS specifies a test to run."
   (message "Run with test args: %s" test-args)
   (let ((test-cmd-args (append
-                        (list "bloop" "test" *bloop-project* "--only")
+                        (list bloopunit-bloop-executable "test" *bloop-project* "--only")
                         test-args)))
     (message "calling: %s" test-cmd-args)
     (let ((default-directory (bloopunit--project-root-dir)))
@@ -141,7 +143,7 @@ PROC is the process. SIGNAL the signal from the process."
 (defun bloopunit--retrieve-projects ()
   "Retrieve the available bloop projects."
   (let ((default-directory (bloopunit--project-root-dir)))
-    (message "%s" (shell-command-to-string "bloop projects"))))
+    (message "%s" (shell-command-to-string (format "%s projects" bloopunit-bloop-executable)))))
 
 (defun bloopunit--compute-test-args (test-spec single buffer-text current-point)
   "Calculates test-args as used in execute-in-context.
@@ -265,8 +267,8 @@ Specify optional SINGLE (T)) to try to run only a single test case."
   (let ((buffer-text "package foo.bar
 class FooBar {
 }"))
-    (assert (string= "foo.bar.FooBar"
-                     (bloopunit--find-test-class buffer-text)))))
+    (cl-assert (string= "foo.bar.FooBar"
+                        (bloopunit--find-test-class buffer-text)))))
 
 (defun bloopunit--test--find-test-method--funspec ()
   "Test finding the test-case context - fun spec."
@@ -274,8 +276,8 @@ class FooBar {
   test(\"foo bar test\") {
 in test
 }"))
-    (assert (string= "foo bar test"
-                     (bloopunit--find-test-method--funspec buffer-text 41)))))
+    (cl-assert (string= "foo bar test"
+                        (bloopunit--find-test-method--funspec buffer-text 41)))))
 
 (defun bloopunit--test--find-test-method--wordspec ()
   "Test finding the test-case context - word spec."
@@ -283,25 +285,25 @@ in test
   \"foo bar test\" in {
 in test
 }"))
-    (assert (string= "foo bar test"
-                     (bloopunit--find-test-method--wordspec buffer-text 34)))))
+    (cl-assert (string= "foo bar test"
+                        (bloopunit--find-test-method--wordspec buffer-text 34)))))
 
 (defun bloopunit--test--compute-test-args ()
   "Test computing test args."
   (let ((buffer-text ""))
     ;; return given test spec
-    (assert (string= "my-given-test-spec"
-                     (bloopunit--compute-test-args "my-given-test-spec" nil buffer-text 0))))
+    (cl-assert (string= "my-given-test-spec"
+                        (bloopunit--compute-test-args "my-given-test-spec" nil buffer-text 0))))
   (let ((buffer-text "package foo.bar\nclass FooBar\ntest(\"foo-test\") { blah }"))
     ;; return full class test
-    (assert (equalp (list "foo.bar.FooBar")
-                    (bloopunit--compute-test-args nil nil buffer-text 0)))
+    (cl-assert (cl-equalp (list "foo.bar.FooBar")
+                          (bloopunit--compute-test-args nil nil buffer-text 0)))
     ;; cursor pos in 'test' block - returns single test
-    (assert (equalp (list "foo.bar.FooBar" "--" "-t" "foo-test")
-                    (bloopunit--compute-test-args nil t buffer-text 54)))
+    (cl-assert (cl-equalp (list "foo.bar.FooBar" "--" "-t" "foo-test")
+                          (bloopunit--compute-test-args nil t buffer-text 54)))
     ;; cursor pos outside of 'test' block
-    (assert (equalp (list "foo.bar.FooBar")
-                    (bloopunit--compute-test-args nil t buffer-text 10)))
+    (cl-assert (cl-equalp (list "foo.bar.FooBar")
+                          (bloopunit--compute-test-args nil t buffer-text 10)))
     )
   )
 
