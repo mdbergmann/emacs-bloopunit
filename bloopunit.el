@@ -152,7 +152,8 @@ When this is not null, it'll be used.
 Otherwise we calculate a new test-spec, from class
 and (maybe) single test case if SINGLE is T.
 BUFFER-TEXT contains the buffer text as string without properties.
-CURRENT-POINT is the current cursor position. Only relevant if SINGLE is specified."
+CURRENT-POINT is the current cursor position.
+Only relevant if SINGLE is specified."
   (if (not (null test-spec))
       test-spec
     (let* ((test-class (bloopunit--find-test-class
