@@ -39,6 +39,9 @@
 (defvar-local *last-test* nil)
 (defvar-local *bloop-process* nil)
 
+(defvar bloopunit-test-failure-hook nil)
+(defvar bloopunit-test-success-hook nil)
+
 (defvar bloopunit-bloop-executable "bloop")
 
 (defvar *bloopunit-output-buf-name* "*bloopunit output*")
@@ -174,10 +177,14 @@ Only relevant if SINGLE is specified."
 
 (defun bloopunit--handle-successful-test-result ()
   "Do some stuff when the test ran OK."
+  (message "BLOOPUNIT: running commit hook.")
+  (run-hooks 'bloopunit-test-success-hook)
   (message "%s" (propertize "Tests OK" 'face '(:foreground "green"))))
 
 (defun bloopunit--handle-unsuccessful-test-result ()
   "Do some stuff when the test ran NOK."
+  (message "BLOOPUNIT: running revert hook.")
+  (run-hooks 'bloopunit-test-failure-hook)
   (message "%s" (propertize "Tests failed!" 'face '(:foreground "red"))))
 
 (cl-defun bloopunit--run-test (&optional (test-spec nil) (single nil))
