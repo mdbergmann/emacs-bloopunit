@@ -249,6 +249,7 @@ Specify optional SINGLE (T)) to try to run only a single test case."
                                                (split-string (bloopunit--retrieve-projects))))
   (message "Selected project: %s" *bloop-project*))
 
+;;;###autoload
 (define-minor-mode bloopunit-mode
   "Bloop unit - test runner. Runs Bloop to execute tests."
   :lighter " BU"
