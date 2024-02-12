@@ -205,9 +205,9 @@ Specify optional SINGLE (T)) to try to run only a single test case."
     (error "Need 'scala-mode' to run!"))
   
   (get-buffer-create *bloopunit-output-buf-name*)
-
   (with-current-buffer *bloopunit-output-buf-name*
     (erase-buffer))
+  (display-buffer *bloopunit-output-buf-name*)
   
   (let ((test-args (bloopunit--compute-test-args
                     test-spec
