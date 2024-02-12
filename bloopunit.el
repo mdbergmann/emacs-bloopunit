@@ -66,7 +66,7 @@ BUFFER-TEXT is a string where the matching should take place."
   "Find a single test case for the test run in fun spec format.
 BUFFER-TEXT is a string where the matching should take place.
 CURR-POSITION is the current position of the curser in the buffer."
-  (message "Finding test case in fun spec format.")
+  (message "Finding test case in fun spec format starting: %s" curr-position)
   (with-temp-buffer
     (insert buffer-text)
     (goto-char curr-position)
@@ -83,13 +83,13 @@ CURR-POSITION is the current position of the curser in the buffer."
   "Find a single test case for the test run in word spec format.
 BUFFER-TEXT is a string where the matching should take place.
 CURR-POSITION is the current position of the curser in the buffer."
-  (message "Finding test case in word spec format.")
+  (message "Finding test case in word spec format starting: %s" curr-position)
   (with-temp-buffer
     (insert buffer-text)
     (goto-char curr-position)
     (let ((found-point (re-search-backward "\".*\" +in +{" nil t)))
       (message "point: %s" found-point)
-      (message "starting with: %s" (substring-no-properties buffer-text (- found-point 1)))
+      ;;(message "starting with: %s" (substring-no-properties buffer-text (- found-point 1)))
       (if found-point
           (let ((matches (string-match "\"\\(.*\\)\" +in"
                                        buffer-text
@@ -162,9 +162,14 @@ Only relevant if SINGLE is specified."
     (let* ((test-class (bloopunit--find-test-class
                         buffer-text))
            (single-test (if single
-                            (bloopunit--find-test-method--funspec
-                             buffer-text
-                             current-point)))
+                            (or
+                             (bloopunit--find-test-method--funspec
+                              buffer-text
+                              current-point)
+                             (bloopunit--find-test-method--wordspec
+                              buffer-text
+                              current-point)
+                             )))
            (test-args (list test-class)))
       (if (and single-test single)
           (append test-args
@@ -242,7 +247,7 @@ Specify optional SINGLE (T)) to try to run only a single test case."
       nil)))
 
 (defun bloopunit-select-project ()
-  "Prompts for the Bloop project."
+  "Prompt for the Bloop project."
   (interactive)
 
   (setq-local *bloop-project* (completing-read "[bloopunit] Bloop project: "
@@ -302,6 +307,7 @@ in test
     ;; return given test spec
     (cl-assert (string= "my-given-test-spec"
                         (bloopunit--compute-test-args "my-given-test-spec" nil buffer-text 0))))
+  ;; funspec test
   (let ((buffer-text "package foo.bar\nclass FooBar\ntest(\"foo-test\") { blah }"))
     ;; return full class test
     (cl-assert (cl-equalp (list "foo.bar.FooBar")
@@ -310,6 +316,21 @@ in test
     (cl-assert (cl-equalp (list "foo.bar.FooBar" "--" "-t" "foo-test")
                           (bloopunit--compute-test-args nil t buffer-text 54)))
     ;; cursor pos outside of 'test' block
+    (cl-assert (cl-equalp (list "foo.bar.FooBar")
+                          (bloopunit--compute-test-args nil t buffer-text 10)))
+    )
+  ;; wordspec test
+  (let ((buffer-text "package foo.bar\nclass FooBar\n\"foo-test\" in { blah }"))
+    ;; return full class test
+    (message "wordspec - full class test")
+    (cl-assert (cl-equalp (list "foo.bar.FooBar")
+                          (bloopunit--compute-test-args nil nil buffer-text 0)))
+    ;; cursor pos in 'test' block - returns single test
+    (message "wordspec - single test")
+    (cl-assert (cl-equalp (list "foo.bar.FooBar" "--" "-t" "foo-test")
+                          (bloopunit--compute-test-args nil t buffer-text 46)))
+    ;; cursor pos outside of 'in' block
+    (message "wordspec - single test - outside")
     (cl-assert (cl-equalp (list "foo.bar.FooBar")
                           (bloopunit--compute-test-args nil t buffer-text 10)))
     )
